@@ -23,8 +23,6 @@
 OneWire TempSensorPin(2);
 DallasTemperature TempSensor(&TempSensorPin);
 
-
-
 /*
 Motor Controller
 xxx[0] controls '1' outputs (PUMP)
@@ -60,12 +58,9 @@ IPAddress server(10,0,1,114);
 //YunClient client;
 BridgeClient client;
 
-/*
-------------------------------
-SETUP LOOP START HERE
-------------------------------
-*/
-
+/*----------------------------
+  SETUP LOOP START HERE
+------------------------------*/
 void setup() { 
   Bridge.begin();
   Mailbox.begin();
@@ -93,18 +88,16 @@ void setup() {
 
 }
 
-/*
------------------------------
-VOID LOOP START HERE
------------------------------
-*/
+/*---------------------------
+  VOID LOOP START HERE
+-----------------------------*/
 void loop(){
-  Console.println( "Start of Loop");
+  debugPost("Start of Loop");
 
   // set postType to 0 if Batch ID = 0 to postpone data collection;
   if (batchId == 0){
     postType = 0;
-    debug("PostType",String(postType));
+    debug(String(postType), "PostType");
   } 
 
   // check post type and build post data
@@ -114,7 +107,7 @@ void loop(){
     
     if (postType == 1){
     
-      debug("PostType",String(postType));
+      debug(String(postType), "PostType");
       
       //compile data var from batch vars 
       dataWriteBatch();
@@ -131,7 +124,7 @@ void loop(){
     
     else if (postType == 2){
       
-      debug("PostType",String(postType));
+      debug(String(postType), "PostType");
       
       // check temperatures against optimum settings and turn pump/peltier on or off, update screen with new statuses and temps
       // includes function to write datafiles and update screen every minute
@@ -148,18 +141,19 @@ void loop(){
       mailboxCheck();
       
       // wait 5 minutes and then loop
+      debugPost("waiting for 5 minutes to check sensors again...")
       delay(60000);
     
   } else if (postType == 0){
     
-    debug("","no post type, waiting for input...");
+    debug("no post type, waiting for input...");
     // wait for mailbox request
     mailboxCheck();
     delay(10000);  // wait 10 seconds and check again 
   }
   
   delay(10000); //wait 10 seconds
-  Console.println("End of Loop");
+  debug("End of Loop");
 }
 
 /*
@@ -171,17 +165,30 @@ FUNCTIONS START BELOW HERE
 /*----- DEBUG ------------------------------
 --------------------------------------------*/
 //debug function: outputs to Console (web) and Serial (local usb)
-void debug(String valueHeader, String value){
-  if (valueHeader == ""){
-    Console.print(valueHeader + ": ");
-    Serial.print(valueHeader + ": ");
+void debug(String value, String valueHeader){
+  if (valueHeader === undefined ){
+    //console
+    Console.println(value);
+    //serial
+    Serial.println(value);
+  } else {
+    //console
+    Console.println(valueHeader + ": " + value);
+    //serial
+    Serial.println(valueHeader + ": " + value);
   }
-  Console.println(value);
-  Serial.println(value);
-  Console.println("----");
-  Serial.println("----");
+  //console
+  Console.println("****");
+  //serial
+  Serial.println("****");
 }
 
+void debugPost(String value){
+    //console
+    Console.println(value);
+    //serial
+    Serial.println(value);
+}
 
 /*----- DATA WRITING -----------------------
 --------------------------------------------*/
@@ -203,8 +210,7 @@ void dataWriteBatch(){
   data += "&batchSize=" + dataTemp;
   
   // write debug of data
-  Console.println("Full data string: " + data);
-  Console.println("----");
+  debug(data, "Full Batch Data String");
 }
 void dataWriteSensors(){
   //create a SENSOR POST  
@@ -231,27 +237,28 @@ void dataWriteSensors(){
   // input tempDiff
   dataTemp = String(tempDiff); 
   data += "&tempDiff=" + dataTemp; 
+  
   // write debug of data
-  Console.println("Full data string: " + data);
-  Console.println("----");
+  debug(data, "Full Sensor Data String");
 }
 
 void postData(){
   if (client.connect("beerdev.wisepdx.net",80)) { // REPLACE WITH YOUR SERVER ADDRESS
     client.println("POST /add.php HTTP/1.1"); 
-    Console.println("POST /add.php HTTP/1.1");
     client.println("Host: beerdev.wisepdx.net"); // SERVER ADDRESS HERE TOO
-    Console.println("Host: beerdev.wisepdx.net");
     client.println("Accept: */*");
-    Console.println("Accept: */*"); 
     client.println("Content-Length: " + String(data.length())); 
-    Console.println("Content-Length: " + String(data.length())); 
-    //client.println(data.length());
     client.println("Content-Type: application/x-www-form-urlencoded"); 
-    Console.println("Content-Type: application/x-www-form-urlencoded"); 
     client.println(); 
     client.println(data);
-    Console.println(data);
+    
+    //debug write
+    debugPost("POST /add.php HTTP/1.1");
+    debugPost("Host: beerdev.wisepdx.net");
+    debugPost("Accept: */*");
+    debugPost("Content-Length: " + String(data.length()));
+    debugPost("Content-Type: application/x-www-form-urlencoded");
+    debugPost(data);
   } 
   
   if (client.connected()) { 
@@ -267,14 +274,15 @@ void readTemp(){
   currentTemp = TempSensor.getTempFByIndex(1);  // (Metal Probe Sensor)
 
   // write debug of Temp
-  debug("Ambient Temp", String(ambientTemp,3));
-  debug("Current Temp", String(currentTemp,3));
+  debug(String(ambientTemp,3),"Ambient Temp");
+  debug(String(currentTemp,3), "Current Temp");
 }
 
 /*----- PARSE MAILBOX MESSAGE ----------------
 --------------------------------------------*/
 void mailboxCheck(){
   String message;
+  debugPost("Checking Mailbox...");
   // if there is a message in the Mailbox
   if (Mailbox.messageAvailable()){
     
@@ -289,7 +297,7 @@ void mailboxCheck(){
     while (Mailbox.messageAvailable()){
       Mailbox.readMessage(message);
         // write messages in debug
-        debug("mailbox",message);
+        debug(message,"Message");
       String variableName = "";
       String variableValue = "";
       bool readingName = false;
@@ -373,29 +381,22 @@ void motorCheck(){
   
   // check temperature against target and alter motors accordingly
   if (currentTemp < targetTempLow){
-    // run peltier as heater
+    // run peltier as cooler
     motorGo(1,CW,220); // peltier 1
     motorGo(0,CW,220); // peltier 2
-    // after starting motors, run the following until currentTemp is higher than target Temp
-    //while(currentTemp < targetTemp){
-    //}
+    debugPost("Cooling", "Peltier Status");
   } 
   else 
 if (currentTemp > targetTempHigh){
-    // run peltier as cooler
+    // run peltier as heater
     motorGo(1,CCW,220); // peltier 1
     motorGo(0,CCW,220); // peltier 2
-    // after starting motors, run the following until currentTemp is lower than target Temp
-    //while(currentTemp > targetTemp){
-    //}
+    debugPost("Heating", "Peltier Status");
   }
   else{
     motorOff(0); // peltier 1
     motorOff(1); // peltier 2
-    debug("Peltiers","Off");
-    //  after stopping motors, run the following until currentTemp is outside the target temp range (high/low)
-    //while(currentTemp < targetTempHigh && currentTemp > targetTempLow){
-    //}
+    debugPost("Off", "Peltier Status");
   }
 }
 
@@ -444,8 +445,10 @@ void motorGo(uint8_t motor, uint8_t direct, uint8_t pwm){
       // set pelt status based on motor direction
       if (direct == CW){
         peltStatus = 2;
+        
       }else if (direct == CCW){
         peltStatus = 1;
+        
       }
     }
   }
