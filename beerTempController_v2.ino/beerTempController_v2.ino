@@ -69,7 +69,7 @@ void setup() {
 
   // start Temperature Sensors
   TempSensor.begin();
-  // motor Shield Temp Setup (Set to Off)
+  // motor Shield (Set to Off)
   motorOff(0);
   motorOff(1);
 
@@ -78,14 +78,11 @@ void setup() {
   
   //Check connection to server
   if (client.connect(server, 80)) {
-    Serial.println("connected to server");
-    Console.println("connected to server");
+    debugPost("connected to server");
     delay(2500);
   } else {
-    Serial.println("connection to server failed");
-    Console.println("connection to server failed");
+    debugPost("Ah snap! connection to server failed");
   }
-
 }
 
 /*---------------------------
@@ -97,46 +94,33 @@ void loop(){
   // set postType to 0 if Batch ID = 0 to postpone data collection;
   if (batchId == 0){
     postType = 0;
-    debug(String(postType), "PostType");
   } 
 
   // check post type and build post data
   if (postType != 0 ){
 
     //POST TYPE 1
-    
     if (postType == 1){
-    
       debug(String(postType), "PostType");
-      
       //compile data var from batch vars 
       dataWriteBatch();
-      
       //POST Data
       postData();
-      
       // set post type to 2 to start collecting sensor data
       postType = 2;
-      
     } 
 
     //POST TYPE 2
-    
     else if (postType == 2){
-      
       debug(String(postType), "PostType");
-      
       // check temperatures against optimum settings and turn pump/peltier on or off, update screen with new statuses and temps
       // includes function to write datafiles and update screen every minute
       motorCheck();
-      
       //compile data var from sensor data
       dataWriteSensors();
-      
       //POST Data
       postData();
     }    
-    
       //Check Mailbox for new data
       mailboxCheck();
       
@@ -146,7 +130,7 @@ void loop(){
     
   } else if (postType == 0){
     
-    debug("no post type, waiting for input...");
+    debug("waiting for input...");
     // wait for mailbox request
     mailboxCheck();
     delay(10000);  // wait 10 seconds and check again 
@@ -178,9 +162,9 @@ void debug(String value, String valueHeader){
     Serial.println(valueHeader + ": " + value);
   }
   //console
-  Console.println("****");
+  Console.println();
   //serial
-  Serial.println("****");
+  Serial.println();
 }
 
 void debugPost(String value){
@@ -194,8 +178,6 @@ void debugPost(String value){
 --------------------------------------------*/
 
 void dataWriteBatch(){
-  //create a BEER BATCH POST
-  
   //clear data
   data = "";
   // input post Type
@@ -213,8 +195,6 @@ void dataWriteBatch(){
   debug(data, "Full Batch Data String");
 }
 void dataWriteSensors(){
-  //create a SENSOR POST  
-  
   //clear sensor data
   data = "";
   // input post Type
@@ -244,6 +224,7 @@ void dataWriteSensors(){
 
 void postData(){
   if (client.connect("beerdev.wisepdx.net",80)) { // REPLACE WITH YOUR SERVER ADDRESS
+    //HTTP POST
     client.println("POST /add.php HTTP/1.1"); 
     client.println("Host: beerdev.wisepdx.net"); // SERVER ADDRESS HERE TOO
     client.println("Accept: */*");
@@ -253,12 +234,9 @@ void postData(){
     client.println(data);
     
     //debug write
-    debugPost("POST /add.php HTTP/1.1");
-    debugPost("Host: beerdev.wisepdx.net");
-    debugPost("Accept: */*");
-    debugPost("Content-Length: " + String(data.length()));
-    debugPost("Content-Type: application/x-www-form-urlencoded");
-    debugPost(data);
+    debugPost("sending POST to add.php @ beerdev.wisepdx.net");
+    debugPost("Length: " + String(data.length()));
+    debug("Data:" + data, "N");
   } 
   
   if (client.connected()) { 
@@ -283,25 +261,18 @@ void readTemp(){
 void mailboxCheck(){
   String message;
   debugPost("Checking Mailbox...");
+  int l ="0"; // message increment var
   // if there is a message in the Mailbox
   if (Mailbox.messageAvailable()){
-    
-    for (int i=1;i<4;i++){
-      digitalWrite(13,HIGH);
-      delay(1000);
-      digitalWrite(13,LOW);
-    }
     
     digitalWrite(13,HIGH);
     // read all the messages present in the queue
     while (Mailbox.messageAvailable()){
       Mailbox.readMessage(message);
-        // write messages in debug
-        debug(message,"Message");
       String variableName = "";
       String variableValue = "";
       bool readingName = false;
-
+      l++; //increment variable l
       // loop though the message (in HTTP GET format)
       for(int i = 0; i < message.length();i++){
         // do somthing with each chr
@@ -337,6 +308,9 @@ void mailboxCheck(){
       }
       recordVariablesFromWeb(variableName, variableValue);
       digitalWrite(13, LOW); // after Message Read turn LED13 off
+      
+      // write messages in debug
+      debug(message,"Message" + String(l));
     }
   }
 }
@@ -367,7 +341,6 @@ void recordVariablesFromWeb(String variableName, String variableValue){
     targetTemp = variableValue.toInt();
     // set high/low range of target temperature range
   }
-  
   // Update high/low temp difference
   targetTempHigh = targetTemp + tempDiff;
   targetTempLow = targetTemp - tempDiff;
@@ -445,10 +418,8 @@ void motorGo(uint8_t motor, uint8_t direct, uint8_t pwm){
       // set pelt status based on motor direction
       if (direct == CW){
         peltStatus = 2;
-        
       }else if (direct == CCW){
         peltStatus = 1;
-        
       }
     }
   }
