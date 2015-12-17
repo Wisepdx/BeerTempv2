@@ -141,19 +141,19 @@ void loop(){
       mailboxCheck();
       
       // wait 5 minutes and then loop
-      debugPost("waiting for 5 minutes to check sensors again...")
+      debugPost("waiting for 5 minutes to check sensors again...");
       delay(60000);
     
   } else if (postType == 0){
     
-    debug("no post type, waiting for input...");
+    debug("no post type, waiting for input...","N");
     // wait for mailbox request
     mailboxCheck();
     delay(10000);  // wait 10 seconds and check again 
   }
   
   delay(10000); //wait 10 seconds
-  debug("End of Loop");
+  debug("End of Loop","N");
 }
 
 /*
@@ -166,7 +166,7 @@ FUNCTIONS START BELOW HERE
 --------------------------------------------*/
 //debug function: outputs to Console (web) and Serial (local usb)
 void debug(String value, String valueHeader){
-  if (valueHeader === undefined ){
+  if (valueHeader == "N" ){
     //console
     Console.println(value);
     //serial
@@ -201,7 +201,7 @@ void dataWriteBatch(){
   // input post Type
   data += "postType=1";
   // input batch ID
-  dataTemp = String(batchId,5);
+  dataTemp = String(batchId);
   data += "&batchId=" + dataTemp;
   // input batch name
   data += "&batchName=" + batchName;
@@ -220,10 +220,10 @@ void dataWriteSensors(){
   // input post Type
   data += "postType=2";
   // input batch ID
-  dataTemp = String(batchId,5);
+  dataTemp = String(batchId);
   data += "&batchId=" + dataTemp;
   // input targetTemp
-  dataTemp = String(targetTemp); //removed ,3 from parens
+  dataTemp = String(targetTemp);
   data += "&targetTemp=" + dataTemp;
   // input currentTemp
   dataTemp = String(currentTemp,3);
@@ -384,19 +384,19 @@ void motorCheck(){
     // run peltier as cooler
     motorGo(1,CW,220); // peltier 1
     motorGo(0,CW,220); // peltier 2
-    debugPost("Cooling", "Peltier Status");
+    debug("Cooling", "Peltier Status");
   } 
   else 
 if (currentTemp > targetTempHigh){
     // run peltier as heater
     motorGo(1,CCW,220); // peltier 1
     motorGo(0,CCW,220); // peltier 2
-    debugPost("Heating", "Peltier Status");
+    debug("Heating", "Peltier Status");
   }
   else{
     motorOff(0); // peltier 1
     motorOff(1); // peltier 2
-    debugPost("Off", "Peltier Status");
+    debug("Off", "Peltier Status");
   }
 }
 
