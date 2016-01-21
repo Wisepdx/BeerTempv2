@@ -23,11 +23,9 @@
 OneWire TempSensorPin(2);
 DallasTemperature TempSensor(&TempSensorPin);
 
-/*
-Motor Controller
-xxx[0] controls '1' outputs (PUMP)
-xxx[1] controls '2' outputs (PELTIER)
-*/
+
+// Motor Controller xxx[0] controls '1' outputs and xxx[1] controls '2' outputs (PELTIER)
+
 int inApin[2] = {7, 4};  // INA: Clockwise input
 int inBpin[2] = {8, 9};  // INB: Counter-clockwise input {8, 9};
 int pwmpin[2] = {5, 6};  // PWM input
@@ -62,10 +60,14 @@ BridgeClient client;
   SETUP LOOP START HERE
 ------------------------------*/
 void setup() { 
+  
   Bridge.begin();
   Mailbox.begin();
   Console.begin();
   Serial.begin(115200);
+  
+  // 12v Fans for Peltiers
+  pinMode(12, OUTPUT);
 
   // start Temperature Sensors
   TempSensor.begin();
@@ -83,6 +85,19 @@ void setup() {
   } else {
     debugPost("Ah snap! connection to server failed");
   }
+  
+  //Run Fan Test
+  digitalWrite(12,HIGH);
+  delay(50000);
+  digitalWrite(12,LOW);
+  
+
+  //Run LED Test
+  digitalWrite(13,HIGH);
+  delay(50000);
+  digitalWrite(13,LOW);
+
+  
 }
 
 /*---------------------------
@@ -130,11 +145,8 @@ void loop(){
     
   } else if (postType == 0){
     
-<<<<<<< HEAD:beerTempController_v2.ino/beerTempController_v2/beerTempController_v2.ino
     debug("no post type, waiting for input...","N");
-=======
-    debug("waiting for input...");
->>>>>>> origin/master:beerTempController_v2.ino/beerTempController_v2.ino
+
     // wait for mailbox request
     mailboxCheck();
     delay(10000);  // wait 10 seconds and check again 
@@ -265,7 +277,7 @@ void readTemp(){
 void mailboxCheck(){
   String message;
   debugPost("Checking Mailbox...");
-  int l ="0"; // message increment var
+  int l = 0; // message increment var
   // if there is a message in the Mailbox
   if (Mailbox.messageAvailable()){
     
@@ -361,6 +373,7 @@ void motorCheck(){
     // run peltier as cooler
     motorGo(1,CW,220); // peltier 1
     motorGo(0,CW,220); // peltier 2
+    digitalWrite(12, HIGH);
     debug("Cooling", "Peltier Status");
   } 
   else 
@@ -368,11 +381,13 @@ if (currentTemp > targetTempHigh){
     // run peltier as heater
     motorGo(1,CCW,220); // peltier 1
     motorGo(0,CCW,220); // peltier 2
+    digitalWrite(12, HIGH);
     debug("Heating", "Peltier Status");
   }
   else{
     motorOff(0); // peltier 1
     motorOff(1); // peltier 2
+    digitalWrite(12, LOW);
     debug("Off", "Peltier Status");
   }
 }
