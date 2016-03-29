@@ -39,7 +39,7 @@ int batchIdOld = 0;  // beer ID (always make 3 digit)
 String batchName = "unknown"; // beer name
 int batchSize = 10;  // beer batch size
 int targetTemp = 68;  // target temp of beer (In Fahrenheit)
-int pumpStatus = 0; // pump Status (0 = Off, 1 = On)
+//int pumpStatus = 0; // pump Status (0 = Off, 1 = On)
 int peltStatus = 0; // peltier status (0 = Off, 1 = Cool, 2 = Heat)
 float currentTemp;  // current temperature of beer (In Fahrenheit)
 float ambientTemp;  // ambient temperature of room (In Fahrenheit)
@@ -59,13 +59,13 @@ BridgeClient client;
 /*----------------------------
   SETUP LOOP START HERE
 ------------------------------*/
-void setup() { 
-  
+void setup() {
+
   Bridge.begin();
   Mailbox.begin();
   Console.begin();
   Serial.begin(115200);
-  
+
   // 12v Fans for Peltiers
   pinMode(12, OUTPUT);
 
@@ -77,7 +77,7 @@ void setup() {
 
   delay(10000);
   debug("Starting","Session");
-  
+
   //Check connection to server
   if (client.connect(server, 80)) {
     debugPost("connected to server");
@@ -85,19 +85,19 @@ void setup() {
   } else {
     debugPost("Ah snap! connection to server failed");
   }
-  
+
   //Run Fan Test
   digitalWrite(12,HIGH);
   delay(50000);
   digitalWrite(12,LOW);
-  
+
 
   //Run LED Test
   digitalWrite(13,HIGH);
   delay(50000);
   digitalWrite(13,LOW);
 
-  
+
 }
 
 /*---------------------------
@@ -109,7 +109,7 @@ void loop(){
   // set postType to 0 if Batch ID = 0 to postpone data collection;
   if (batchId == 0){
     postType = 0;
-  } 
+  }
 
   // check post type and build post data
   if (postType != 0 ){
@@ -117,41 +117,41 @@ void loop(){
     //POST TYPE 1
     if (postType == 1){
       debug(String(postType), "PostType");
-      //compile data var from batch vars 
+      //compile data var from batch vars
       dataWriteBatch();
       //POST Data
       postData();
       // set post type to 2 to start collecting sensor data
       postType = 2;
-    } 
+    }
 
     //POST TYPE 2
     else if (postType == 2){
       debug(String(postType), "PostType");
-      // check temperatures against optimum settings and turn pump/peltier on or off, update screen with new statuses and temps
+      // check temperatures against optimum settings and turn peltier on or off, update screen with new statuses and temps
       // includes function to write datafiles and update screen every minute
       motorCheck();
       //compile data var from sensor data
       dataWriteSensors();
       //POST Data
       postData();
-    }    
+    }
       //Check Mailbox for new data
       mailboxCheck();
-      
+
       // wait 5 minutes and then loop
       debugPost("waiting for 5 minutes to check sensors again...");
       delay(60000);
-    
+
   } else if (postType == 0){
-    
+
     debug("no post type, waiting for input...","N");
 
     // wait for mailbox request
     mailboxCheck();
-    delay(10000);  // wait 10 seconds and check again 
+    delay(10000);  // wait 10 seconds and check again
   }
-  
+
   delay(10000); //wait 10 seconds
   debug("End of Loop","N");
 }
@@ -206,7 +206,7 @@ void dataWriteBatch(){
   // input batch size
   dataTemp = batchSize;
   data += "&batchSize=" + dataTemp;
-  
+
   // write debug of data
   debug(data, "Full Batch Data String");
 }
@@ -228,12 +228,12 @@ void dataWriteSensors(){
   dataTemp = String(ambientTemp,3);
   data += "&ambientTemp=" + dataTemp;
   // input peltStatus
-  dataTemp = String(peltStatus); 
+  dataTemp = String(peltStatus);
   data += "&peltStatus=" + dataTemp;
   // input tempDiff
-  dataTemp = String(tempDiff); 
-  data += "&tempDiff=" + dataTemp; 
-  
+  dataTemp = String(tempDiff);
+  data += "&tempDiff=" + dataTemp;
+
   // write debug of data
   debug(data, "Full Sensor Data String");
 }
@@ -241,21 +241,21 @@ void dataWriteSensors(){
 void postData(){
   if (client.connect("beerdev.wisepdx.net",80)) { // REPLACE WITH YOUR SERVER ADDRESS
     //HTTP POST
-    client.println("POST /add.php HTTP/1.1"); 
+    client.println("POST /add.php HTTP/1.1");
     client.println("Host: beerdev.wisepdx.net"); // SERVER ADDRESS HERE TOO
     client.println("Accept: */*");
-    client.println("Content-Length: " + String(data.length())); 
-    client.println("Content-Type: application/x-www-form-urlencoded"); 
-    client.println(); 
+    client.println("Content-Length: " + String(data.length()));
+    client.println("Content-Type: application/x-www-form-urlencoded");
+    client.println();
     client.println(data);
-    
+
     //debug write
     debugPost("sending POST to add.php @ beerdev.wisepdx.net");
     debugPost("Length: " + String(data.length()));
     debug("Data:" + data, "N");
-  } 
-  
-  if (client.connected()) { 
+  }
+
+  if (client.connected()) {
     client.stop();  // DISCONNECT FROM THE SERVER
   }
 }
@@ -280,7 +280,7 @@ void mailboxCheck(){
   int l = 0; // message increment var
   // if there is a message in the Mailbox
   if (Mailbox.messageAvailable()){
-    
+
     digitalWrite(13,HIGH);
     // read all the messages present in the queue
     while (Mailbox.messageAvailable()){
@@ -324,7 +324,7 @@ void mailboxCheck(){
       }
       recordVariablesFromWeb(variableName, variableValue);
       digitalWrite(13, LOW); // after Message Read turn LED13 off
-      
+
       // write messages in debug
       debug(message,"Message" + String(l));
     }
@@ -367,7 +367,7 @@ void recordVariablesFromWeb(String variableName, String variableValue){
 void motorCheck(){
   // grab all temperatures from sensors and write to variables
   readTemp();
-  
+
   // check temperature against target and alter motors accordingly
   if (currentTemp < targetTempLow){
     // run peltier as cooler
@@ -375,8 +375,8 @@ void motorCheck(){
     motorGo(0,CW,220); // peltier 2
     digitalWrite(12, HIGH);
     debug("Cooling", "Peltier Status");
-  } 
-  else 
+  }
+  else
 if (currentTemp > targetTempHigh){
     // run peltier as heater
     motorGo(1,CCW,220); // peltier 1
