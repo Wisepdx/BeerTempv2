@@ -28,7 +28,7 @@ DallasTemperature TempSensor(&TempSensorPin);
 
 int inApin[2] = {7, 4};  // INA: Clockwise input
 int inBpin[2] = {8, 9};  // INB: Counter-clockwise input {8, 9};
-int pwmpin[2] = {5, 6};  // PWM input
+int pwmpin[2] = {5, 3};  // PWM input
 int cspin[2] = {A2, A3}; // CS: Current sense ANALOG input
 int enpin[2] = {A0, A1}; // EN: Status of switches output (Analog pin)
 
