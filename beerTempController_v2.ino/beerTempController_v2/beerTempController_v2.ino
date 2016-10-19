@@ -25,9 +25,8 @@ DallasTemperature TempSensor(&TempSensorPin);
 
 
 // Motor Controller xxx[0] controls '1' outputs and xxx[1] controls '2' outputs (PELTIER)
-
 int inApin[2] = {7, 4};  // INA: Clockwise input
-int inBpin[2] = {8, 9};  // INB: Counter-clockwise input {8, 9};
+int inBpin[2] = {8, 9};  // INB: Counter-clockwise input;
 int pwmpin[2] = {5, 3};  // PWM input
 int cspin[2] = {A2, A3}; // CS: Current sense ANALOG input
 int enpin[2] = {A0, A1}; // EN: Status of switches output (Analog pin)
@@ -37,8 +36,8 @@ int enpin[2] = {A0, A1}; // EN: Status of switches output (Analog pin)
 int batchId = 0;  // beer ID (always make 3 digit)
 int batchIdOld = 0;  // beer ID (always make 3 digit)
 String batchName = "unknown"; // beer name
-int batchSize = 10;  // beer batch size
-int targetTemp = 68;  // target temp of beer (In Fahrenheit)
+int batchSize = 10;  // beer batch size - Deafult 10 Gallons
+int targetTemp = 68;  // target temp of beer (In Fahrenheit) - Default 68
 //int pumpStatus = 0; // pump Status (0 = Off, 1 = On)
 int peltStatus = 0; // peltier status (0 = Off, 1 = Cool, 2 = Heat)
 float currentTemp;  // current temperature of beer (In Fahrenheit)
@@ -49,9 +48,10 @@ int targetTempLow = targetTemp - tempDiff;  // low end of temp range
 int postType = 0; // 1 = BatchData, 2 = Sensor Data
 String data = ""; // holds data to POST
 String dataTemp; // temp hold area for int and floats when printing into data
+String divider = "----------" // debug output divider
 
 //IP Address of the sever on which there is the WS: http://www.mywebsite.com/
-IPAddress server(10,0,1,114);
+IPAddress server(10,0,1,114); // internal ip address
 
 //YunClient client;
 BridgeClient client;
@@ -59,6 +59,7 @@ BridgeClient client;
 /*----------------------------
   SETUP LOOP START HERE
 ------------------------------*/
+
 void setup() {
 
   Bridge.begin();
@@ -67,7 +68,7 @@ void setup() {
   Serial.begin(115200);
 
   // 12v Fans for Peltiers
-  pinMode(12, OUTPUT);
+  pinMode(13, OUTPUT);
 
   // start Temperature Sensors
   TempSensor.begin();
@@ -75,38 +76,30 @@ void setup() {
   motorOff(0);
   motorOff(1);
 
+  //Delay before starting session
   delay(10000);
   debug("Starting","Session");
 
   //Check connection to server
   if (client.connect(server, 80)) {
-    debugPost("connected to server");
+    debugPost("Sweet! Connected");
     delay(2500);
   } else {
-    debugPost("Ah snap! connection to server failed");
+    debugPost("Ah Snap! Connection Failed");
   }
 
-  //Run Fan Test
-  digitalWrite(12,HIGH);
-  delay(50000);
-  digitalWrite(12,LOW);
-
-
-  //Run LED Test
-  digitalWrite(13,HIGH);
-  delay(50000);
+  // Turn Fans Off
   digitalWrite(13,LOW);
-
-
 }
 
 /*---------------------------
   VOID LOOP START HERE
 -----------------------------*/
-void loop(){
-  debugPost("Start of Loop");
 
-  // set postType to 0 if Batch ID = 0 to postpone data collection;
+void loop(){
+  debugPost("Start Loop");
+  
+  // set postType to 0 if Batch ID = 0 to postpone data collection and wait for more instructions;
   if (batchId == 0){
     postType = 0;
   }
@@ -114,9 +107,11 @@ void loop(){
   // check post type and build post data
   if (postType != 0 ){
 
-    //POST TYPE 1
+    //write out post type
+    debug(String(postType), "PostType");
+    
+    //POST TYPE 1 - Batch Data Post
     if (postType == 1){
-      debug(String(postType), "PostType");
       //compile data var from batch vars
       dataWriteBatch();
       //POST Data
@@ -125,9 +120,8 @@ void loop(){
       postType = 2;
     }
 
-    //POST TYPE 2
+    //POST TYPE 2 - Sensor Data Post
     else if (postType == 2){
-      debug(String(postType), "PostType");
       // check temperatures against optimum settings and turn peltier on or off, update screen with new statuses and temps
       // includes function to write datafiles and update screen every minute
       motorCheck();
@@ -141,11 +135,11 @@ void loop(){
 
       // wait 5 minutes and then loop
       debugPost("waiting for 5 minutes to check sensors again...");
-      delay(60000);
+      delay(300000);
 
   } else if (postType == 0){
 
-    debug("no post type, waiting for input...","N");
+    debugPost("no post type set, waiting for input");
 
     // wait for mailbox request
     mailboxCheck();
@@ -153,7 +147,7 @@ void loop(){
   }
 
   delay(10000); //wait 10 seconds
-  debug("End of Loop","N");
+  debug("End Loop","N");
 }
 
 /*
@@ -162,35 +156,32 @@ FUNCTIONS START BELOW HERE
 ------------------------------------
 */
 
-/*----- DEBUG ------------------------------
+/*----- DEBUG POSTIN' ------------------------
 --------------------------------------------*/
 //debug function: outputs to Console (web) and Serial (local usb)
+
 void debug(String value, String valueHeader){
   if (valueHeader == "N" ){
-    //console
+    // output to console and serial
     Console.println(value);
-    //serial
     Serial.println(value);
   } else {
-    //console
+    // output to console and serial
     Console.println(valueHeader + ": " + value);
-    //serial
     Serial.println(valueHeader + ": " + value);
   }
-  //console
-  Console.println();
-  //serial
-  Serial.println();
+  // output to console and serial
+  Console.println(divider);
+  Serial.println(divider);
 }
 
 void debugPost(String value){
-    //console
+    // output to console and serial
     Console.println(value);
-    //serial
     Serial.println(value);
 }
 
-/*----- DATA WRITING -----------------------
+/*----- DATA WRITIN' -------------------------
 --------------------------------------------*/
 
 void dataWriteBatch(){
@@ -206,10 +197,10 @@ void dataWriteBatch(){
   // input batch size
   dataTemp = batchSize;
   data += "&batchSize=" + dataTemp;
-
   // write debug of data
   debug(data, "Full Batch Data String");
 }
+
 void dataWriteSensors(){
   //clear sensor data
   data = "";
@@ -250,9 +241,9 @@ void postData(){
     client.println(data);
 
     //debug write
-    debugPost("sending POST to add.php @ beerdev.wisepdx.net");
-    debugPost("Length: " + String(data.length()));
-    debug("Data:" + data, "N");
+    debugPost("Sending POST to add.php @ beerdev.wisepdx.net");
+    debug(String(data.length()),"Length");
+    debug(data, "Data Sent");
   }
 
   if (client.connected()) {
@@ -260,7 +251,7 @@ void postData(){
   }
 }
 
-/*----- TEMPERATURE ------------------------
+/*----- TEMPERATURE FINDIN' ------------------
 --------------------------------------------*/
 void readTemp(){
   TempSensor.requestTemperatures();
@@ -272,7 +263,7 @@ void readTemp(){
   debug(String(currentTemp,3), "Current Temp");
 }
 
-/*----- PARSE MAILBOX MESSAGE ----------------
+/*----- MAILBOX MESSAGE PARSIN' --------------
 --------------------------------------------*/
 void mailboxCheck(){
   String message;
@@ -285,6 +276,8 @@ void mailboxCheck(){
     // read all the messages present in the queue
     while (Mailbox.messageAvailable()){
       Mailbox.readMessage(message);
+      //write out message
+      debug(message, "Message");
       String variableName = "";
       String variableValue = "";
       bool readingName = false;
@@ -321,12 +314,10 @@ void mailboxCheck(){
             variableValue += currentCharacter;
           }
         }
+        
       }
+      //record variable
       recordVariablesFromWeb(variableName, variableValue);
-      digitalWrite(13, LOW); // after Message Read turn LED13 off
-
-      // write messages in debug
-      debug(message,"Message" + String(l));
     }
   }
 }
@@ -335,6 +326,9 @@ void recordVariablesFromWeb(String variableName, String variableValue){
   // set values to their particular variables in this section
   // parse Variables to the Proper Variable
 
+  //write out variables
+  debug(variableValue,variableName);
+  
   if(variableName == "batchid"){
     // if batch ID does not equal current batch ID flag as a new postType
     if (batchId != variableValue.toInt()){
@@ -357,6 +351,7 @@ void recordVariablesFromWeb(String variableName, String variableValue){
     targetTemp = variableValue.toInt();
     // set high/low range of target temperature range
   }
+
   // Update high/low temp difference
   targetTempHigh = targetTemp + tempDiff;
   targetTempLow = targetTemp - tempDiff;
@@ -364,6 +359,7 @@ void recordVariablesFromWeb(String variableName, String variableValue){
 
 /*----- MOTOR SHIELD FUNCTIONS ---------------
 --------------------------------------------*/
+
 void motorCheck(){
   // grab all temperatures from sensors and write to variables
   readTemp();
@@ -371,23 +367,23 @@ void motorCheck(){
   // check temperature against target and alter motors accordingly
   if (currentTemp < targetTempLow){
     // run peltier as cooler
-    motorGo(1,CW,220); // peltier 1
-    motorGo(0,CW,220); // peltier 2
-    digitalWrite(12, HIGH);
+    motorGo(1,CCW,220); // peltier 1
+    motorGo(0,CCW,220); // peltier 2
+    digitalWrite(13, HIGH); // turn fans on
     debug("Cooling", "Peltier Status");
   }
   else
 if (currentTemp > targetTempHigh){
     // run peltier as heater
-    motorGo(1,CCW,220); // peltier 1
-    motorGo(0,CCW,220); // peltier 2
-    digitalWrite(12, HIGH);
+    motorGo(1,CW,220); // peltier 1
+    motorGo(0,CW,220); // peltier 2
+    digitalWrite(13, HIGH); // turn fans on
     debug("Heating", "Peltier Status");
   }
   else{
     motorOff(0); // peltier 1
     motorOff(1); // peltier 2
-    digitalWrite(12, LOW);
+    digitalWrite(13, LOW); // turn fans off
     debug("Off", "Peltier Status");
   }
 }
