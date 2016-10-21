@@ -23,7 +23,6 @@
 OneWire TempSensorPin(2);
 DallasTemperature TempSensor(&TempSensorPin);
 
-
 // Motor Controller xxx[0] controls '1' outputs and xxx[1] controls '2' outputs (PELTIER)
 int inApin[2] = {7, 4};  // INA: Clockwise input
 int inBpin[2] = {8, 9};  // INB: Counter-clockwise input;
@@ -48,7 +47,7 @@ int targetTempLow = targetTemp - tempDiff;  // low end of temp range
 int postType = 0; // 1 = BatchData, 2 = Sensor Data
 String data = ""; // holds data to POST
 String dataTemp; // temp hold area for int and floats when printing into data
-String divider = "----------" // debug output divider
+String divider = "----------"; // debug output divider
 
 //IP Address of the sever on which there is the WS: http://www.mywebsite.com/
 IPAddress server(10,0,1,114); // internal ip address
@@ -68,7 +67,7 @@ void setup() {
   Serial.begin(115200);
 
   // 12v Fans for Peltiers
-  pinMode(13, OUTPUT);
+  pinMode(0, OUTPUT);
 
   // start Temperature Sensors
   TempSensor.begin();
@@ -89,7 +88,7 @@ void setup() {
   }
 
   // Turn Fans Off
-  digitalWrite(13,LOW);
+  digitalWrite(0,LOW);
 }
 
 /*---------------------------
@@ -102,6 +101,7 @@ void loop(){
   // set postType to 0 if Batch ID = 0 to postpone data collection and wait for more instructions;
   if (batchId == 0){
     postType = 0;
+    debug("Stopping logging until new batch entered", "N")
   }
 
   // check post type and build post data
@@ -271,8 +271,6 @@ void mailboxCheck(){
   int l = 0; // message increment var
   // if there is a message in the Mailbox
   if (Mailbox.messageAvailable()){
-
-    digitalWrite(13,HIGH);
     // read all the messages present in the queue
     while (Mailbox.messageAvailable()){
       Mailbox.readMessage(message);
@@ -369,7 +367,7 @@ void motorCheck(){
     // run peltier as cooler
     motorGo(1,CCW,220); // peltier 1
     motorGo(0,CCW,220); // peltier 2
-    digitalWrite(13, HIGH); // turn fans on
+    digitalWrite(0, HIGH); // turn fans on
     debug("Cooling", "Peltier Status");
   }
   else
@@ -377,13 +375,13 @@ if (currentTemp > targetTempHigh){
     // run peltier as heater
     motorGo(1,CW,220); // peltier 1
     motorGo(0,CW,220); // peltier 2
-    digitalWrite(13, HIGH); // turn fans on
+    digitalWrite(0, HIGH); // turn fans on
     debug("Heating", "Peltier Status");
   }
   else{
     motorOff(0); // peltier 1
     motorOff(1); // peltier 2
-    digitalWrite(13, LOW); // turn fans off
+    digitalWrite(0, LOW); // turn fans off
     debug("Off", "Peltier Status");
   }
 }
