@@ -36,18 +36,19 @@ int batchId = 0;  // beer ID (always make 3 digit)
 int batchIdOld = 0;  // beer ID (always make 3 digit)
 String batchName = "unknown"; // beer name
 int batchSize = 10;  // beer batch size - Deafult 10 Gallons
-int targetTemp = 68;  // target temp of beer (In Fahrenheit) - Default 68
+float targetTemp = 68;  // target temp of beer (In Fahrenheit) - Default 68
 //int pumpStatus = 0; // pump Status (0 = Off, 1 = On)
 int peltStatus = 0; // peltier status (0 = Off, 1 = Cool, 2 = Heat)
 float currentTemp;  // current temperature of beer (In Fahrenheit)
 float ambientTemp;  // ambient temperature of room (In Fahrenheit)
-int tempDiff = 1; // range at which temperature can drift from target
+float tempDiff = 0.5; // range at which temperature can drift from target
 int targetTempHigh = targetTemp + tempDiff; // high end of temp range
 int targetTempLow = targetTemp - tempDiff;  // low end of temp range
 int postType = 0; // 1 = BatchData, 2 = Sensor Data
 String data = ""; // holds data to POST
 String dataTemp; // temp hold area for int and floats when printing into data
 String divider = "----------"; // debug output divider
+int messageCount = 0; //message count
 
 //IP Address of the sever on which there is the WS: http://www.mywebsite.com/
 IPAddress server(10,0,1,114); // internal ip address
@@ -67,7 +68,7 @@ void setup() {
   Serial.begin(115200);
 
   // 12v Fans for Peltiers
-  pinMode(0, OUTPUT);
+  pinMode(13, OUTPUT);
 
   // start Temperature Sensors
   TempSensor.begin();
@@ -88,7 +89,13 @@ void setup() {
   }
 
   // Turn Fans Off
-  digitalWrite(0,LOW);
+  digitalWrite(13,LOW);
+  delay(2000);
+  // Turn Fans On
+  digitalWrite(13,HIGH);
+  delay(2000);
+  // Turn Fans Off
+  digitalWrite(13,LOW);
 }
 
 /*---------------------------
@@ -97,19 +104,21 @@ void setup() {
 
 void loop(){
   debugPost("Start Loop");
-  
+
+  //Check Mailbox for new data
+  mailboxCheck();
+
   // set postType to 0 if Batch ID = 0 to postpone data collection and wait for more instructions;
   if (batchId == 0){
     postType = 0;
-    debug("Stopping logging until new batch entered", "N")
+    debug("Stopping logging until new batch entered", "N");
   }
 
   // check post type and build post data
   if (postType != 0 ){
-
     //write out post type
     debug(String(postType), "PostType");
-    
+
     //POST TYPE 1 - Batch Data Post
     if (postType == 1){
       //compile data var from batch vars
@@ -118,24 +127,57 @@ void loop(){
       postData();
       // set post type to 2 to start collecting sensor data
       postType = 2;
+
+      // wait 1 minute and then loop
+      debugPost("waiting for 1 minutes to check sensors again...");
+      delay(60000);
     }
 
     //POST TYPE 2 - Sensor Data Post
     else if (postType == 2){
-      // check temperatures against optimum settings and turn peltier on or off, update screen with new statuses and temps
-      // includes function to write datafiles and update screen every minute
-      motorCheck();
-      //compile data var from sensor data
-      dataWriteSensors();
-      //POST Data
-      postData();
-    }
-      //Check Mailbox for new data
-      mailboxCheck();
+      // check temperatures against optimum settings and turn peltier on or off
 
-      // wait 5 minutes and then loop
-      debugPost("waiting for 5 minutes to check sensors again...");
-      delay(300000);
+      // grab all temperatures from sensors and write to variables
+      readTemp();
+
+      // heat
+      if (currentTemp < targetTempLow){
+        do {
+          heat();
+          //compile data var from sensor data
+          dataWriteSensors();
+          //POST Data
+          postData();
+          // wait 5 minutes and then loop
+          debugPost("waiting for 5 minutes to check sensors again...");
+          delay(300000);
+          // check messages
+          messageCheck();
+        }
+        while((currentTemp < targetTemp) && (messageCount == 0));
+      }
+      // cool
+      else if (currentTemp > targetTempHigh){
+        do {
+          cool();
+          //compile data var from sensor data
+          dataWriteSensors();
+          //POST Data
+          postData();
+          // wait 5 minutes and then loop
+          debugPost("waiting for 5 minutes to check sensors again...");
+          delay(300000);
+          // check messages
+          messageCheck();
+        }
+        while((currentTemp > targetTemp) && (messageCount == 0));
+      }
+      else{
+        off();
+      }
+    }
+
+
 
   } else if (postType == 0){
 
@@ -268,7 +310,7 @@ void readTemp(){
 void mailboxCheck(){
   String message;
   debugPost("Checking Mailbox...");
-  int l = 0; // message increment var
+  int messageCount = 0; // message increment var
   // if there is a message in the Mailbox
   if (Mailbox.messageAvailable()){
     // read all the messages present in the queue
@@ -279,7 +321,7 @@ void mailboxCheck(){
       String variableName = "";
       String variableValue = "";
       bool readingName = false;
-      l++; //increment variable l
+      messageCount++; //increment variable l
       // loop though the message (in HTTP GET format)
       for(int i = 0; i < message.length();i++){
         // do somthing with each chr
@@ -312,11 +354,12 @@ void mailboxCheck(){
             variableValue += currentCharacter;
           }
         }
-        
+
       }
       //record variable
       recordVariablesFromWeb(variableName, variableValue);
     }
+    debug(messageCount,"Number of Messages");
   }
 }
 
@@ -326,7 +369,7 @@ void recordVariablesFromWeb(String variableName, String variableValue){
 
   //write out variables
   debug(variableValue,variableName);
-  
+
   if(variableName == "batchid"){
     // if batch ID does not equal current batch ID flag as a new postType
     if (batchId != variableValue.toInt()){
@@ -357,33 +400,27 @@ void recordVariablesFromWeb(String variableName, String variableValue){
 
 /*----- MOTOR SHIELD FUNCTIONS ---------------
 --------------------------------------------*/
+void heat(){
+  // run peltier as heater
+  motorGo(1,CW,220); // peltier 1
+  motorGo(0,CW,220); // peltier 2
+  digitalWrite(13, HIGH); // turn fans on
+  debug("Heating", "Peltier Status");
+}
 
-void motorCheck(){
-  // grab all temperatures from sensors and write to variables
-  readTemp();
+void cool(){
+  // run peltier as cooler
+  motorGo(1,CCW,220); // peltier 1
+  motorGo(0,CCW,220); // peltier 2
+  digitalWrite(13, HIGH); // turn fans on
+  debug("Cooling", "Peltier Status");
+}
 
-  // check temperature against target and alter motors accordingly
-  if (currentTemp < targetTempLow){
-    // run peltier as cooler
-    motorGo(1,CCW,220); // peltier 1
-    motorGo(0,CCW,220); // peltier 2
-    digitalWrite(0, HIGH); // turn fans on
-    debug("Cooling", "Peltier Status");
-  }
-  else
-if (currentTemp > targetTempHigh){
-    // run peltier as heater
-    motorGo(1,CW,220); // peltier 1
-    motorGo(0,CW,220); // peltier 2
-    digitalWrite(0, HIGH); // turn fans on
-    debug("Heating", "Peltier Status");
-  }
-  else{
-    motorOff(0); // peltier 1
-    motorOff(1); // peltier 2
-    digitalWrite(0, LOW); // turn fans off
-    debug("Off", "Peltier Status");
-  }
+void off(){
+  motorOff(0); // peltier 1
+  motorOff(1); // peltier 2
+  digitalWrite(13, LOW); // turn fans off
+  debug("Off", "Peltier Status");
 }
 
 void motorOff(int motor){
