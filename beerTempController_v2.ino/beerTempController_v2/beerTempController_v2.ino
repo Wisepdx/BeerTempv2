@@ -143,6 +143,8 @@ void loop(){
       // heat
       if (currentTemp < targetTempLow){
         do {
+          // grab all temperatures from sensors and write to variables
+          readTemp();
           heat();
           //compile data var from sensor data
           dataWriteSensors();
@@ -152,13 +154,15 @@ void loop(){
           debugPost("waiting for 5 minutes to check sensors again...");
           delay(300000);
           // check messages
-          messageCheck();
+          mailboxCheck();
         }
         while((currentTemp < targetTemp) && (messageCount == 0));
       }
       // cool
       else if (currentTemp > targetTempHigh){
         do {
+          // grab all temperatures from sensors and write to variables
+          readTemp();
           cool();
           //compile data var from sensor data
           dataWriteSensors();
@@ -168,17 +172,16 @@ void loop(){
           debugPost("waiting for 5 minutes to check sensors again...");
           delay(300000);
           // check messages
-          messageCheck();
+          mailboxCheck();
         }
         while((currentTemp > targetTemp) && (messageCount == 0));
       }
       else{
+        // grab all temperatures from sensors and write to variables
+        readTemp();
         off();
       }
     }
-
-
-
   } else if (postType == 0){
 
     debugPost("no post type set, waiting for input");
@@ -359,7 +362,7 @@ void mailboxCheck(){
       //record variable
       recordVariablesFromWeb(variableName, variableValue);
     }
-    debug(messageCount,"Number of Messages");
+    debug(String(messageCount,2),"Number of Messages");
   }
 }
 
@@ -371,13 +374,10 @@ void recordVariablesFromWeb(String variableName, String variableValue){
   debug(variableValue,variableName);
 
   if(variableName == "batchid"){
-    // if batch ID does not equal current batch ID flag as a new postType
-    if (batchId != variableValue.toInt()){
-        postType = 1; // flagged as a new beer post
-        batchId = variableValue.toInt();
-      } else {
-        batchId = variableValue.toInt();
-      }
+    batchId = variableValue.toInt();
+  }
+  else if(variableName == "posttype"){
+    postType = variableValue.toInt();
   }
   else if(variableName == "batchname"){
     batchName = variableValue;
@@ -386,10 +386,10 @@ void recordVariablesFromWeb(String variableName, String variableValue){
     batchSize = variableValue.toInt();
   }
   else if(variableName == "tempdiff"){
-    tempDiff = variableValue.toInt();
+    tempDiff = variableValue.toFloat();
   }
   else if(variableName == "targettemp"){
-    targetTemp = variableValue.toInt();
+    targetTemp = variableValue.toFloat();
     // set high/low range of target temperature range
   }
 
