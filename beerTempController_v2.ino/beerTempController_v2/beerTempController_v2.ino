@@ -152,8 +152,8 @@ void loop(){
           //POST Data
           postData();
           // wait 5 minutes and then loop
-          debugPost("waiting for 1 minutes to check sensors again...");
-          delay(60000);
+          debugPost("waiting for 5 minutes to check sensors again...");
+          delay(300000);
           // check messages
           mailboxCheck();
         }
@@ -171,12 +171,30 @@ void loop(){
           //POST Data
           postData();
           // wait 5 minutes and then loop
-          debugPost("waiting for 1 minutes to check sensors again...");
-          delay(60000);
+          debugPost("waiting for 5 minutes to check sensors again...");
+          delay(300000);
           // check messages
           mailboxCheck();
         }
         while((currentTemp > targetTemp) && (messageCount == 0));
+      }
+      else if ((currentTemp < targetTempHigh) && (currentTemp > targetTempLow)){
+        do {
+          debug(String(messageCount,2),"Message Count");
+          // grab all temperatures from sensors and write to variables
+          readTemp();
+          off();
+          //compile data var from sensor data
+          dataWriteSensors();
+          //POST Data
+          postData();
+          // wait 5 minutes and then loop
+          debugPost("waiting for 5 minutes to check sensors again...");
+          delay(300000);
+          // check messages
+          mailboxCheck();
+        }
+        while((currentTemp < targetTempHigh) && (currentTemp > targetTempLow) && (messageCount == 0));
       }
       else{
         // grab all temperatures from sensors and write to variables
@@ -186,8 +204,8 @@ void loop(){
         //POST Data
         postData();
         // wait 5 minutes and then loop
-        debugPost("waiting for 1 minutes to check sensors again...");
-        delay(60000);
+        debugPost("waiting for 5 minutes to check sensors again...");
+        delay(300000);
       }
     }
   } else if (postType == 0){
