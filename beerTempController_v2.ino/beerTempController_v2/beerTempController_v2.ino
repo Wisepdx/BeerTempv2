@@ -49,6 +49,7 @@ String data = ""; // holds data to POST
 String dataTemp; // temp hold area for int and floats when printing into data
 String divider = "----------"; // debug output divider
 int messageCount = 0; //message count
+int loopCount = 0; // loop counter
 
 //IP Address of the sever on which there is the WS: http://www.mywebsite.com/
 IPAddress server(10,0,1,114); // internal ip address
@@ -132,7 +133,25 @@ void loop(){
       debugPost("waiting for 1 minutes to check sensors again...");
       delay(60000);
     }
-
+    //delay for loop counter exceeded
+    if (loopCount > 99){
+      debugPost("waiting for cool down delay and not checking messages");
+      do{
+          // read temps
+          readTemp();
+          
+          debug(String(loopCount,2),"Delay Cooldown");
+          loopCount--;
+          delay(60000); // delay 60 seconds
+          
+          //compile data var from sensor data
+          dataWriteSensors();
+          //POST Data
+          postData();          
+       } 
+       while (loopCount > 1);
+       loopCount = 0;
+      }
     //POST TYPE 2 - Sensor Data Post
     else if (postType == 2){
       // check temperatures against optimum settings and turn peltier on or off
@@ -156,8 +175,9 @@ void loop(){
           delay(300000);
           // check messages
           mailboxCheck();
+          loopCount++;
         }
-        while((currentTemp < targetTemp) && (messageCount == 0));
+        while(((currentTemp < targetTemp) && (messageCount == 0)) || (loopCount < 100));
       }
       // cool
       else if (currentTemp > targetTempHigh){
@@ -175,8 +195,9 @@ void loop(){
           delay(300000);
           // check messages
           mailboxCheck();
+          loopCount++;
         }
-        while((currentTemp > targetTemp) && (messageCount == 0));
+        while(((currentTemp > targetTemp) && (messageCount == 0)) || (loopCount < 100));
       }
       else if ((currentTemp < targetTempHigh) && (currentTemp > targetTempLow)){
         do {
@@ -430,16 +451,16 @@ void recordVariablesFromWeb(String variableName, String variableValue){
 --------------------------------------------*/
 void heat(){
   // run peltier as heater
-  motorGo(1,CW,220); // peltier 1
-  motorGo(0,CW,220); // peltier 2
+  motorGo(1,CW,110); // peltier 1
+  motorGo(0,CW,110); // peltier 2
   digitalWrite(13, HIGH); // turn fans on
   debug("Heating", "Peltier Status");
 }
 
 void cool(){
   // run peltier as cooler
-  motorGo(1,CCW,220); // peltier 1
-  motorGo(0,CCW,220); // peltier 2
+  motorGo(1,CCW,180); // peltier 1
+  motorGo(0,CCW,180); // peltier 2
   digitalWrite(13, HIGH); // turn fans on
   debug("Cooling", "Peltier Status");
 }
