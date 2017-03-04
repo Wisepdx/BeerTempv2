@@ -192,6 +192,7 @@ void loop(){
           debugPost("waiting for 5 minutes to check sensors again...");
           delay(300000);
 <<<<<<< HEAD
+<<<<<<< HEAD
           // check messages
           mailboxCheck();
           loopCount++;
@@ -213,6 +214,8 @@ void loop(){
           delay(300000);
 =======
 >>>>>>> parent of 680aaad... updated Temp Diff variables
+=======
+>>>>>>> parent of 680aaad... updated Temp Diff variables
           // check messages
           mailboxCheck();
         }
@@ -223,6 +226,7 @@ void loop(){
         readTemp();
         off();
 <<<<<<< HEAD
+<<<<<<< HEAD
         //compile data var from sensor data
         dataWriteSensors();
         //POST Data
@@ -230,6 +234,8 @@ void loop(){
         // wait 5 minutes and then loop
         debugPost("waiting for 5 minutes to check sensors again...");
         delay(300000);
+=======
+>>>>>>> parent of 680aaad... updated Temp Diff variables
 =======
 >>>>>>> parent of 680aaad... updated Temp Diff variables
       }
