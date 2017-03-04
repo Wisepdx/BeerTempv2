@@ -42,8 +42,8 @@ int peltStatus = 0; // peltier status (0 = Off, 1 = Cool, 2 = Heat)
 float currentTemp;  // current temperature of beer (In Fahrenheit)
 float ambientTemp;  // ambient temperature of room (In Fahrenheit)
 float tempDiff = 0.5; // range at which temperature can drift from target
-float targetTempHigh = targetTemp + tempDiff; // high end of temp range
-float targetTempLow = targetTemp - tempDiff;  // low end of temp range
+int targetTempHigh = targetTemp + tempDiff; // high end of temp range
+int targetTempLow = targetTemp - tempDiff;  // low end of temp range
 int postType = 0; // 1 = BatchData, 2 = Sensor Data
 String data = ""; // holds data to POST
 String dataTemp; // temp hold area for int and floats when printing into data
@@ -162,7 +162,6 @@ void loop(){
       // heat
       if (currentTemp < targetTempLow){
         do {
-          debug(String(messageCount,2),"Message Count");
           // grab all temperatures from sensors and write to variables
           readTemp();
           heat();
@@ -182,7 +181,6 @@ void loop(){
       // cool
       else if (currentTemp > targetTempHigh){
         do {
-          debug(String(messageCount,2),"Message Count");
           // grab all temperatures from sensors and write to variables
           readTemp();
           cool();
@@ -193,6 +191,7 @@ void loop(){
           // wait 5 minutes and then loop
           debugPost("waiting for 5 minutes to check sensors again...");
           delay(300000);
+<<<<<<< HEAD
           // check messages
           mailboxCheck();
           loopCount++;
@@ -212,6 +211,8 @@ void loop(){
           // wait 5 minutes and then loop
           debugPost("waiting for 5 minutes to check sensors again...");
           delay(300000);
+=======
+>>>>>>> parent of 680aaad... updated Temp Diff variables
           // check messages
           mailboxCheck();
         }
@@ -219,7 +220,9 @@ void loop(){
       }
       else{
         // grab all temperatures from sensors and write to variables
+        readTemp();
         off();
+<<<<<<< HEAD
         //compile data var from sensor data
         dataWriteSensors();
         //POST Data
@@ -227,6 +230,8 @@ void loop(){
         // wait 5 minutes and then loop
         debugPost("waiting for 5 minutes to check sensors again...");
         delay(300000);
+=======
+>>>>>>> parent of 680aaad... updated Temp Diff variables
       }
     }
   } else if (postType == 0){
@@ -353,8 +358,6 @@ void readTemp(){
   // write debug of Temp
   debug(String(ambientTemp,3),"Ambient Temp");
   debug(String(currentTemp,3), "Current Temp");
-  debug(String(targetTempLow,3), "Target Temp Low");
-  debug(String(targetTempHigh,3), "Target Temp High");
 }
 
 /*----- MAILBOX MESSAGE PARSIN' --------------
