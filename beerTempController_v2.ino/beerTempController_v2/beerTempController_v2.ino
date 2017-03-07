@@ -428,8 +428,8 @@ void heat(){
     peltStatus = 2;
     debug("Heating", "Peltier Status");
   } else{
-    motoroff(0); // peltier 1
-    motorGo(1); // peltier 2
+    motorOff(0); // peltier 1
+    motorOff(1); // peltier 2
     digitalWrite(13, LOW); // turn fans Off
     peltStatus = 0;
     debug("Cool Down", "Peltier Status");
