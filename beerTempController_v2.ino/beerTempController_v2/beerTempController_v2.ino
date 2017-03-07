@@ -56,6 +56,7 @@ IPAddress server(10,0,1,114); // internal ip address
 //YunClient client;
 BridgeClient client;
 
+
 /*----------------------------
   SETUP LOOP START HERE
 ------------------------------*/
@@ -105,8 +106,19 @@ void setup() {
 void loop(){
   debugPost("Start Loop");
 
+  // testing client connect
+  if (client.connect(server,80)) {
+      debugPost("Works!!!");
+    } else{
+        debugPost("Nope");
+      }
+
+
   //Check Mailbox for new data
   mailboxCheck();
+
+  // read temperature
+  readTemp();
 
   // set postType to 0 if Batch ID = 0 to postpone data collection and wait for more instructions;
   if (batchId == 0){
@@ -129,8 +141,9 @@ void loop(){
       postType = 2;
 
       // wait 1 minute and then loop
-      debugPost("waiting for 1 minutes to check sensors again...");
-      delay(60000);
+      debugPost("waiting for 5 minutes to check sensors again...");
+      off();
+      delay(300000);
     }
 
     //POST TYPE 2 - Sensor Data Post
@@ -145,6 +158,7 @@ void loop(){
         do {
           // grab all temperatures from sensors and write to variables
           readTemp();
+          //Heat until current temp is hit then let residual heat take over (turn off peltiers)
           heat();
           //compile data var from sensor data
           dataWriteSensors();
@@ -275,7 +289,8 @@ void dataWriteSensors(){
 }
 
 void postData(){
-  if (client.connect("beerdev.wisepdx.net",80)) { // REPLACE WITH YOUR SERVER ADDRESS
+  debugPost("entering post data section...");
+  if (client.connect(server,80)) { // REPLACE WITH YOUR SERVER ADDRESS
     //HTTP POST
     client.println("POST /add.php HTTP/1.1");
     client.println("Host: beerdev.wisepdx.net"); // SERVER ADDRESS HERE TOO
@@ -289,7 +304,9 @@ void postData(){
     debugPost("Sending POST to add.php @ beerdev.wisepdx.net");
     debug(String(data.length()),"Length");
     debug(data, "Data Sent");
-  }
+  } else{
+    debugPost( "Posting failed" );
+    }
 
   if (client.connected()) {
     client.stop();  // DISCONNECT FROM THE SERVER
@@ -402,17 +419,29 @@ void recordVariablesFromWeb(String variableName, String variableValue){
 --------------------------------------------*/
 void heat(){
   // run peltier as heater
-  motorGo(1,CW,220); // peltier 1
-  motorGo(0,CW,220); // peltier 2
-  digitalWrite(13, HIGH); // turn fans on
-  debug("Heating", "Peltier Status");
+
+  // if temp is higher than bar then set to this pwm level else
+  if (currentTemp < targetTemp){
+    motorGo(0,CW,160); // peltier 1
+    motorGo(1,CW,160); // peltier 2
+    digitalWrite(13, HIGH); // turn fans on
+    peltStatus = 2;
+    debug("Heating", "Peltier Status");
+  } else{
+    motoroff(0); // peltier 1
+    motorGo(1); // peltier 2
+    digitalWrite(13, LOW); // turn fans Off
+    peltStatus = 0;
+    debug("Cool Down", "Peltier Status");
+  }
 }
 
 void cool(){
   // run peltier as cooler
-  motorGo(1,CCW,220); // peltier 1
-  motorGo(0,CCW,220); // peltier 2
+  motorGo(0,CCW,255); // peltier 1
+  motorGo(1,CCW,255); // peltier 2
   digitalWrite(13, HIGH); // turn fans on
+  peltStatus = 1;
   debug("Cooling", "Peltier Status");
 }
 
@@ -420,6 +449,7 @@ void off(){
   motorOff(0); // peltier 1
   motorOff(1); // peltier 2
   digitalWrite(13, LOW); // turn fans off
+  peltStatus = 0;
   debug("Off", "Peltier Status");
 }
 
@@ -428,9 +458,6 @@ void motorOff(int motor){
   for (int i=0; i<2; i++){
     digitalWrite(inApin[i], LOW);
     digitalWrite(inBpin[i], LOW);
-  }
-  if (motor == 1){
-    peltStatus = 0;
   }
   analogWrite(pwmpin[motor], 0);
 }
@@ -462,15 +489,6 @@ void motorGo(uint8_t motor, uint8_t direct, uint8_t pwm){
         digitalWrite(inBpin[motor], LOW);
       }
       analogWrite(pwmpin[motor], pwm);
-    }
-    // set status
-    if (motor == 1){
-      // set pelt status based on motor direction
-      if (direct == CW){
-        peltStatus = 2;
-      }else if (direct == CCW){
-        peltStatus = 1;
-      }
     }
   }
 }
