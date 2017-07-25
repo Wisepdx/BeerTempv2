@@ -194,6 +194,15 @@ void loop(){
         // grab all temperatures from sensors and write to variables
         readTemp();
         off();
+        //compile data var from sensor data
+        dataWriteSensors();
+        //POST Data
+        postData();
+        // wait 5 minutes and then loop
+        debugPost("waiting for 5 minutes to check sensors again...");
+        delay(300000);
+        // check messages
+        mailboxCheck();
       }
     }
   } else if (postType == 0){
